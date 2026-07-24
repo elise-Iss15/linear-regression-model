@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-toolsai.jupyter",
+    "charliermarsh.ruff",
+    "dart-code.flutter",
+    "dart-code.dart-code",
+    "humao.rest-client",
+    "eamodio.gitlens",
+    "tamasfe.even-better-toml",
+    "redhat.vscode-yaml"
+  ]
+}
