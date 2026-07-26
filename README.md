@@ -31,3 +31,6 @@ linear_regression_model/
 Endpoints:
 - `POST /predict` — returns a predicted salary given job posting details
 - `POST /retrain` — accepts new labeled data and retrains the model
+
+Demo Video
+[link to the demo](https://www.youtube.com/watch?v=PIU3P6xRiTM)
