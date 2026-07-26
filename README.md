@@ -23,3 +23,11 @@ linear_regression_model/
 │ └── FlutterApp/
 ├── pyproject.toml
 └── uv.lock
+
+## API
+
+**Live Swagger UI:** https://akazi-scroll-api.onrender.com/docs
+
+Endpoints:
+- `POST /predict` — returns a predicted salary given job posting details
+- `POST /retrain` — accepts new labeled data and retrains the model
