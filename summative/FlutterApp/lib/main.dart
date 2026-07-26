@@ -1,121 +1,329 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 void main() {
-  runApp(const MyApp());
+  runApp(const AkaziScrollApp());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class AkaziScrollApp extends StatelessWidget {
+  const AkaziScrollApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      title: 'AKAZI SCROLL',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(primarySwatch: Colors.indigo, useMaterial3: true),
+      home: const PredictionPage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class PredictionPage extends StatefulWidget {
+  const PredictionPage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<PredictionPage> createState() => _PredictionPageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _PredictionPageState extends State<PredictionPage> {
+  static const String apiBaseUrl = 'https://akazi-scroll-api.onrender.com';
 
-  void _incrementCounter() {
+  final _viewsController = TextEditingController();
+
+  String? _selectedTitleCategory;
+  String? _selectedState;
+  String? _selectedWorkType;
+  String? _selectedExperienceLevel;
+
+  bool _isLoading = false;
+  String? _resultText;
+  bool _isError = false;
+
+  final List<String> titleCategories = [
+    'Administrative/Office Support',
+    'Customer Service/Support',
+    'Data/Analytics',
+    'Design',
+    'Education',
+    'Engineering',
+    'Finance',
+    'General Labor/Hospitality',
+    'HR/Recruiting',
+    'Healthcare',
+    'Legal',
+    'Management/Executive',
+    'Marketing',
+    'Other',
+    'Sales',
+    'Senior/Lead',
+    'Technical/Trades',
+  ];
+
+  final List<String> states = [
+    'AK',
+    'AL',
+    'AR',
+    'AZ',
+    'CA',
+    'CO',
+    'CT',
+    'DC',
+    'DE',
+    'FL',
+    'GA',
+    'HI',
+    'IA',
+    'ID',
+    'IL',
+    'IN',
+    'International/Other',
+    'KS',
+    'KY',
+    'LA',
+    'MA',
+    'MD',
+    'ME',
+    'MI',
+    'MN',
+    'MO',
+    'MS',
+    'MT',
+    'NC',
+    'ND',
+    'NE',
+    'NH',
+    'NJ',
+    'NM',
+    'NV',
+    'NY',
+    'OH',
+    'OK',
+    'OR',
+    'PA',
+    'RI',
+    'SC',
+    'SD',
+    'TN',
+    'TX',
+    'US - Metro Area (Unspecified State)',
+    'US - Unspecified',
+    'UT',
+    'VA',
+    'VT',
+    'WA',
+    'WI',
+    'WV',
+    'WY',
+  ];
+
+  final List<String> workTypes = [
+    'Full-time',
+    'Internship',
+    'Contract',
+    'Part-time',
+    'Temporary',
+    'Other',
+    'Volunteer',
+  ];
+
+  final List<String> experienceLevels = [
+    'Not Specified',
+    'Internship',
+    'Entry level',
+    'Associate',
+    'Mid-Senior level',
+    'Director',
+    'Executive',
+  ];
+
+  Future<void> _predictSalary() async {
+    if (_selectedTitleCategory == null ||
+        _selectedState == null ||
+        _selectedWorkType == null ||
+        _selectedExperienceLevel == null ||
+        _viewsController.text.isEmpty) {
+      setState(() {
+        _isError = true;
+        _resultText = 'Please fill in all fields before predicting.';
+      });
+      return;
+    }
+
+    final views = int.tryParse(_viewsController.text);
+    if (views == null || views < 0 || views > 100000) {
+      setState(() {
+        _isError = true;
+        _resultText = 'Views must be a whole number between 0 and 100,000.';
+      });
+      return;
+    }
+
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      _isLoading = true;
+      _resultText = null;
+      _isError = false;
     });
+
+    try {
+      final response = await http.post(
+        Uri.parse('$apiBaseUrl/predict'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title_category': _selectedTitleCategory,
+          'state': _selectedState,
+          'formatted_work_type': _selectedWorkType,
+          'formatted_experience_level': _selectedExperienceLevel,
+          'views': views,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final salary = data['predicted_salary'];
+        setState(() {
+          _isError = false;
+          _resultText = '\$${salary.toStringAsFixed(2)} ${data['currency']}';
+        });
+      } else {
+        setState(() {
+          _isError = true;
+          _resultText = 'Error ${response.statusCode}: ${response.body}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isError = true;
+        _resultText =
+            'Could not reach the server. Note: the free-tier API may take '
+            '30-60 seconds to wake up if idle — please try again.';
+      });
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Widget _buildDropdown({
+    required String label,
+    required List<String> items,
+    required String? value,
+    required void Function(String?) onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: DropdownButtonFormField<String>(
+        initialValue: value,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+        ),
+        items: items
+            .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+            .toList(),
+        onChanged: onChanged,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
     return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
+      appBar: AppBar(title: const Text('AKAZI SCROLL — Salary Estimator')),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'Estimate a fair salary for a job posting',
+                style: TextStyle(fontSize: 16, color: Colors.grey),
+              ),
+              const SizedBox(height: 16),
+              _buildDropdown(
+                label: 'Job Category',
+                items: titleCategories,
+                value: _selectedTitleCategory,
+                onChanged: (v) => setState(() => _selectedTitleCategory = v),
+              ),
+              _buildDropdown(
+                label: 'State',
+                items: states,
+                value: _selectedState,
+                onChanged: (v) => setState(() => _selectedState = v),
+              ),
+              _buildDropdown(
+                label: 'Work Type',
+                items: workTypes,
+                value: _selectedWorkType,
+                onChanged: (v) => setState(() => _selectedWorkType = v),
+              ),
+              _buildDropdown(
+                label: 'Experience Level',
+                items: experienceLevels,
+                value: _selectedExperienceLevel,
+                onChanged: (v) => setState(() => _selectedExperienceLevel = v),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                child: TextField(
+                  controller: _viewsController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Views (0 - 100,000)',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _isLoading ? null : _predictSalary,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                ),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Text('Predict', style: TextStyle(fontSize: 16)),
+              ),
+              const SizedBox(height: 24),
+              if (_resultText != null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: _isError ? Colors.red.shade50 : Colors.green.shade50,
+                    border: Border.all(
+                      color: _isError ? Colors.red : Colors.green,
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isError ? 'Error' : 'Predicted Salary',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _isError
+                              ? Colors.red.shade900
+                              : Colors.green.shade900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(_resultText!, style: const TextStyle(fontSize: 18)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
       ),
     );
   }
