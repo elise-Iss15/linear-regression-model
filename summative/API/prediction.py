@@ -17,9 +17,6 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-# ---------------------------------------------------------------------------
-# Load model artifacts once, at startup
-# ---------------------------------------------------------------------------
 ARTIFACT_DIR = Path(__file__).parent.parent / "linear_regression"
 
 model = joblib.load(ARTIFACT_DIR / "best_model.joblib")
@@ -37,9 +34,6 @@ EXPERIENCE_ORDER = {
 }
 
 
-# ---------------------------------------------------------------------------
-# Enums — restrict input to values the model was actually trained on
-# ---------------------------------------------------------------------------
 class TitleCategory(str, Enum):
     administrative_office_support = "Administrative/Office Support"
     customer_service_support = "Customer Service/Support"
@@ -137,9 +131,6 @@ class ExperienceLevel(str, Enum):
     executive = "Executive"
 
 
-# ---------------------------------------------------------------------------
-# Request / response schemas
-# ---------------------------------------------------------------------------
 class PredictionRequest(BaseModel):
     title_category: TitleCategory
     state: State
@@ -167,9 +158,6 @@ class PredictionResponse(BaseModel):
     currency: str = "USD"
 
 
-# ---------------------------------------------------------------------------
-# App + CORS
-# ---------------------------------------------------------------------------
 app = FastAPI(
     title="AKAZI SCROLL Salary Prediction API",
     description="Predicts a fair salary estimate for a job posting, powering "
@@ -177,12 +165,6 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# CORS reasoning: we scope allowed origins explicitly rather than using "*",
-# since a wildcard would let ANY website call this API and burn our compute /
-# potentially scrape predictions. Only localhost (dev) and the deployed
-# Flutter app's origin (added once known) are allowed. Only GET/POST are
-# needed since this API has no other verbs. Credentials are not required
-# (no cookies/auth session used), so allow_credentials stays False.
 ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8080",
@@ -206,9 +188,6 @@ def encode_request(req: PredictionRequest) -> pd.DataFrame:
         req.formatted_experience_level.value
     ]
 
-    # Set the one matching one-hot column to 1, if it exists as a column.
-    # (If the submitted category was the "dropped" baseline during training,
-    # no column exists for it — leaving everything else 0 is exactly correct.)
     for prefix, value in [
         ("title_category_", req.title_category.value),
         ("state_", req.state.value),
